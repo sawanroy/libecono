@@ -13,8 +13,23 @@ extern "C" {
  * Signature: (Ljava/lang/String;IIIIII)Ljava/io/FileDescriptor;
  */
 JNIEXPORT jobject JNICALL Java_com_flownex_libecono_SerialPort_open
-  (JNIEnv *env, jclass thiz, jstring path, jint baudrate, jint stopBits, jint dataBits,
-           jint parity, jint flowCon, jint flags);
+  (JNIEnv *, jclass, jstring, jint, jint, jint, jint, jint, jint);
+
+/*
+ * Class:     com_flownex_libecono_SerialPort
+ * Method:    serial_read
+ * Signature: (Ljava/io/FileDescriptor;[BII)I
+ */
+JNIEXPORT jint JNICALL Java_com_flownex_libecono_SerialPort_serial_1read
+   (JNIEnv *env, jobject thiz, jobject fd, jbyteArray buf , jint size , jint T);
+
+/*
+ * Class:     com_flownex_libecono_SerialPort
+ * Method:    serial_write
+ * Signature: (Ljava/io/FileDescriptor;[BI)I
+ */
+JNIEXPORT jint JNICALL Java_com_flownex_libecono_SerialPort_serial_1write
+  (JNIEnv *env , jobject thiz, jobject fd , jbyteArray write_buffer, jint size);
 
 /*
  * Class:     com_flownex_libecono_SerialPort
@@ -22,7 +37,7 @@ JNIEXPORT jobject JNICALL Java_com_flownex_libecono_SerialPort_open
  * Signature: ()V
  */
 JNIEXPORT void JNICALL Java_com_flownex_libecono_SerialPort_close
-  (JNIEnv *env, jobject thiz);
+  (JNIEnv *, jobject);
 
 #ifdef __cplusplus
 }

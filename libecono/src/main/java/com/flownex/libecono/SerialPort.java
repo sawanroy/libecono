@@ -18,6 +18,10 @@ package com.flownex.libecono;
 
 import android.util.Log;
 
+
+import com.flownex.libecono.serialport.utils.ByteUtil;
+
+import java.io.CharArrayWriter;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -28,6 +32,8 @@ import java.io.OutputStream;
 public class SerialPort {
 
     private static final String TAG = "SerialPort";
+    String devname2;
+    private CharArrayWriter mOutputStream;
 
     /**
      * Commonly used serial port baudrate
@@ -166,7 +172,7 @@ public class SerialPort {
     public  FileDescriptor mFd;
     public  FileInputStream mFileInputStream;
     public  FileOutputStream mFileOutputStream;
-
+    private static int RS485_Baud_Rate;
     public FileDescriptor rs485_open(String devname, int baudrate ,int stopBits, int dataBits, int parity, int flowCon, int flags) throws SecurityException, IOException {
 
         mFd = open(devname, baudrate, stopBits, dataBits, parity, flowCon, flags);
@@ -174,11 +180,47 @@ public class SerialPort {
             Log.e(TAG, "native open returns null");
             throw new IOException();
         }
-//        mFileInputStream = new FileInputStream(mFd);
-//        mFileOutputStream = new FileOutputStream(mFd);
+        devname2 = devname;
+        RS485_Baud_Rate = baudrate;
+        mFileInputStream = new FileInputStream(mFd);
+        mFileOutputStream = new FileOutputStream(mFd);
         return mFd;
     }
+    public void send(byte[] bOutArray) {
+        try {
+            this.mOutputStream.write(String.valueOf(bOutArray));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public void sendHex(String sHex) {
+        byte[] bOutArray = ByteUtil.HexToByteArr(sHex);
+        send(bOutArray);
+    }
 
+    public void sendTxt(String sTxt) {
+        byte[] bOutArray = sTxt.getBytes();
+        send(bOutArray);
+    }
+    public int Rs485_read(FileDescriptor fd, byte[] buffer, int size, int timeout) {
+
+        int Totalbytes = -1;
+        Totalbytes = serial_read(fd, buffer, size, timeout);
+        return Totalbytes;
+    }
+
+    public int RS485_Write(FileDescriptor fd, byte[] can_buf, int size) {
+        int ret = 0;
+        long WAIT;
+        int byteswritten = serial_write(fd, can_buf, size);
+        WAIT = (1 / RS485_Baud_Rate) * 8 * size * 1000000 + 5000;
+        try {
+            Thread.sleep(WAIT);
+        } catch (InterruptedException ex) {
+            ex.printStackTrace();
+        }
+        return byteswritten;
+    }
     // Getters and setters
     public InputStream getInputStream() {
         return mFileInputStream;
@@ -202,7 +244,9 @@ public class SerialPort {
      * @return
      */
     private native static FileDescriptor open(String path, int baudrate, int stopBits, int dataBits, int parity, int flowCon, int flags);
+    private native int serial_read(FileDescriptor fd, byte[] resp, int respSize, int Timeout);
 
+    public native int serial_write(FileDescriptor fd, byte[] resp, int respSize);
     public native void close();
 
     static {

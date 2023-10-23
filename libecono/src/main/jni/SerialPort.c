@@ -22,7 +22,8 @@
 #include <fcntl.h>
 #include <string.h>
 #include <jni.h>
-
+#include<time.h>
+#include <errno.h>
 #include "com_flownex_libecono_SerialPort.h"
 
 #include "android/log.h"
@@ -37,6 +38,11 @@ static const char *TAG = "serial_port";
  * Method:    open
  * Signature: (Ljava/lang/String;II)Ljava/io/FileDescriptor;
  */
+
+ #define ERROR -1
+ #define Success 0
+ #define Timeout -2
+
 JNIEXPORT jobject JNICALL Java_com_flownex_libecono_SerialPort_open
         (JNIEnv *env, jclass thiz, jstring path, jint baudrate, jint stopBits, jint dataBits,
          jint parity, jint flowCon, jint flags) {
@@ -187,6 +193,140 @@ JNIEXPORT jobject JNICALL Java_com_flownex_libecono_SerialPort_open
 
     return mFileDescriptor;
 }
+
+JNIEXPORT jint JNICALL Java_com_flownex_libecono_SerialPort_serial_1read
+  (JNIEnv *env, jobject thiz, jobject fd, jbyteArray buf , jint size , jint T)
+  {
+
+        jint descriptor = -1;
+
+               jclass SerialPortClass = (*env)->GetObjectClass(env, thiz);
+              jclass FileDescriptorClass = (*env)->FindClass(env, "java/io/FileDescriptor");
+               jfieldID mFdID = (*env)->GetFieldID(env, SerialPortClass, "mFd", "Ljava/io/FileDescriptor;");
+              jfieldID descriptorID = (*env)->GetFieldID(env, FileDescriptorClass, "descriptor", "I");
+              jobject fd2 = (*env)->GetObjectField(env, thiz, mFdID);
+
+              descriptor = (*env)->GetIntField(env, fd2, descriptorID);
+              LOGD("descriptor = %d", descriptor);
+
+            jbyte *buffer = (*env)->GetByteArrayElements(env, buf, NULL);
+
+            jbyte *resbuf;
+            fd_set set;
+
+          struct timeval timeout = {0, T};
+          int ready=0;
+          int TotalBytes=0;
+          int r = 0;
+          int expected_Byte=size;
+          int filedisc = descriptor;
+          int sizetoread = 0;
+          static int ntoread=0;
+
+          LOGD("descriptor2  = %d", descriptor);
+
+          FD_ZERO(&set);  /* clear the set */
+          FD_SET(filedisc, &set); /* add our file descriptor to the set */
+
+
+          double sec = ((double)T/(double)1000000);
+           LOGD(" sec %lf",sec);
+
+          ready = select(descriptor + 1 , &set, NULL, NULL, &timeout);
+          LOGD("errno = %s",strerror(errno));
+        	if(ready == -1){
+        	/* Some error has occured in input */
+        	LOGD(" ERROR");
+            		return ERROR;
+        	}
+
+          	 if(ready == 0){
+        	/* a timeout occured */
+        		LOGD(" TIMEOUT occured");
+
+            		return Timeout;
+        	}
+        	else if(ready){
+        	     clock_t  total_t;
+        			/* there was data to read */
+                 LOGD(" reading ");
+
+        		 TotalBytes = read(descriptor, buffer, expected_Byte);
+                    LOGD(" first %d", TotalBytes);
+                  if (TotalBytes < expected_Byte){
+                  LOGD(" inside");
+                  sizetoread = expected_Byte - TotalBytes;
+                  ntoread = sizetoread;
+
+                  total_t = clock() + sec * CLOCKS_PER_SEC;
+                     while (clock() < total_t) {
+
+                               ntoread = ntoread - r;
+                               double time = ((double)total_t - (double)clock())/ (double)CLOCKS_PER_SEC;
+                               LOGD(" time %lf",time );
+                               LOGD(" ntoread %d",ntoread );
+                               struct timeval t = {0, time};
+                               if(select(descriptor + 1 , &set, NULL, NULL, &t)>0){
+                               r = read(descriptor, &buffer[TotalBytes], ntoread);
+                               LOGD(" r %d", r);
+                               TotalBytes += r;
+
+                               LOGD(" TotalBytes %d", TotalBytes);
+
+                               }else{
+                                    LOGD(" break1 ");
+                                     break;
+                                    }
+                               }
+                         }
+                   }
+                   if(TotalBytes == 0){
+                   LOGD("TIMEOUT TOTALBYTE = 0");
+                   return Timeout;
+                   }
+        		(*env)->SetByteArrayRegion(env, buf, 0,size , buffer);
+        	LOGD(" TotalBytes %d", TotalBytes);
+        	 FD_CLR(filedisc, &set);
+        	return TotalBytes;
+
+  }
+
+
+JNIEXPORT jint JNICALL Java_com_flownex_libecono_SerialPort_serial_1write
+  (JNIEnv *env , jobject thiz, jobject fd , jbyteArray write_buffer, jint size)
+  {
+     jint descriptor = -1;
+
+               jclass SerialPortClass = (*env)->GetObjectClass(env, thiz);
+              jclass FileDescriptorClass = (*env)->FindClass(env, "java/io/FileDescriptor");
+              jfieldID mFdID = (*env)->GetFieldID(env, SerialPortClass, "mFd", "Ljava/io/FileDescriptor;");
+              jfieldID descriptorID = (*env)->GetFieldID(env, FileDescriptorClass, "descriptor", "I");
+              jobject fd2 = (*env)->GetObjectField(env, thiz, mFdID);
+
+              descriptor = (*env)->GetIntField(env, fd2, descriptorID);
+
+        jbyte *buffer = (*env)->GetByteArrayElements(env, write_buffer, NULL);
+        LOGD("descriptor = %d", descriptor);
+
+        //unsigned char cmd[] = {0xAA, 0x66, 0x00, 0x04, 0x37, 0x00, 0x3B};
+        int n;
+        n = write(descriptor, buffer, size);
+       // int TotalBytes = read(descriptor, buffer2, 1000);
+        LOGD(" n %d", n);
+        LOGD(" inside write %d", size);
+        if(n != (size))
+        {
+            LOGD(" inside write if %d", n);
+            if(errno == EAGAIN)
+            return ERROR;
+        }else{
+            LOGD(" inside write else %d", n);
+        (*env)->SetByteArrayRegion(env, write_buffer, 0,size , buffer);
+            return n;
+         }
+
+  }
+
 
 /*
  * Class:     cedric_serial_SerialPort
