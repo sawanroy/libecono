@@ -47,163 +47,152 @@ static const char *TAG = "serial_port";
 JNIEXPORT jobject JNICALL Java_com_flownex_libecono_SerialPort_open
         (JNIEnv *env, jclass thiz, jstring path, jint baudrate, jint stopBits, jint dataBits,
          jint parity, jint flowCon, jint flags) {
-    int fd;
-    speed_t speed;
-    jobject mFileDescriptor;
-    LOGE("path %d",path);
-    /* Check arguments */
-    {
-        speed = baudrate;
-        if (speed == -1) {
-            /* TODO: throw an exception */
-            LOGE("Invalid baudrate");
-            return NULL;
-        }
-    }
+        int fd;
+        speed_t speed;
+        jobject mFileDescriptor;
 
-    /* Opening device */
-    {
-        jboolean iscopy;
-        const char *path_utf = (*env)->GetStringUTFChars(env, path, &iscopy);
-        LOGD("Opening serial port %s with flags 0x%x", path_utf, O_RDWR | O_NOCTTY | O_SYNC);
-        fd = open(path_utf, O_RDWR | O_NOCTTY | O_SYNC);
-        LOGD("open() fd = %d", fd);
-        (*env)->ReleaseStringUTFChars(env, path, path_utf);
-        if (fd == -1) {
-            /* Throw an exception */
-            LOGE("Cannot open port");
-            /* TODO: throw an exception */
-            return NULL;
-        }
-    }
-
-    /* Configure device */
-    {
-        struct termios2 cfg;
-
-        //ioctl (fd, TCGETS2, &cfg);
-        LOGD("Configuring  port");
-        if (tcgetattr(fd, &cfg))
+        /* Check arguments */
         {
-            LOGE("tcgetattr() failed");
-            close(fd);
-            return NULL;
-        }
-        // Set baudrate
-        cfg.c_cflag &= ~CBAUD;
-        cfg.c_cflag |= BOTHER;
-
-        cfg.c_ispeed = baudrate;
-        cfg.c_ospeed = baudrate;
-
-        cfg.c_cflag &= ~CSIZE;
-        switch (dataBits) {
-            case 5:
-                cfg.c_cflag |= CS5;    //5 Data Bits
-                break;
-            case 6:
-                cfg.c_cflag |= CS6;    //6 Data Bits
-                break;
-            case 7:
-                cfg.c_cflag |= CS7;    //7 Data Bits
-                break;
-            case 8:
-                cfg.c_cflag |= CS8;    //8 Data Bits
-                break;
-            default:
-                cfg.c_cflag |= CS8;
-                break;
+            speed = baudrate;
+            if (speed == -1) {
+                /* TODO: throw an exception */
+                LOGE("Invalid baudrate");
+                return NULL;
+            }
         }
 
-        switch (parity) {
-            case 0:
-                cfg.c_cflag &= ~PARENB;    //PARITY OFF
-                break;
-            case 1:
-                cfg.c_cflag |= (PARODD | PARENB);   //PARITY ODD
-                cfg.c_iflag &= ~IGNPAR;
-                cfg.c_iflag |= PARMRK;
-                cfg.c_iflag |= INPCK;
-                break;
-            case 2:
-                cfg.c_iflag &= ~(IGNPAR | PARMRK); //PARITY EVEN
-                cfg.c_iflag |= INPCK;
-                cfg.c_cflag |= PARENB;
-                cfg.c_cflag &= ~PARODD;
-                break;
-            case 3:
-                //  PARITY SPACE
-                cfg.c_iflag &= ~IGNPAR;             //  Make sure wrong parity is not ignored
-                cfg.c_iflag |= PARMRK;              //  Marks parity error, parity error
-                //  is given as three char sequence
-                cfg.c_iflag |= INPCK;               //  Enable input parity checking
-                cfg.c_cflag |= PARENB | CMSPAR;     //  Enable parity and set space parity
-                cfg.c_cflag &= ~PARODD;             //
-                break;
-            case 4:
-                //  PARITY MARK
-                cfg.c_iflag &= ~IGNPAR;             //  Make sure wrong parity is not ignored
-                cfg.c_iflag |= PARMRK;              //  Marks parity error, parity error
-                //  is given as three char sequence
-                cfg.c_iflag |= INPCK;               //  Enable input parity checking
-                cfg.c_cflag |= PARENB | CMSPAR | PARODD;
-                break;
-            default:
-                cfg.c_cflag &= ~PARENB;
-                break;
+        /* Opening device */
+        {
+            jboolean iscopy;
+            const char *path_utf = (*env)->GetStringUTFChars(env, path, &iscopy);
+            LOGD("Opening serial port %s with flags 0x%x", path_utf, O_RDWR | flags);
+            fd = open(path_utf, O_RDWR | flags);
+            LOGD("open() fd = %d", fd);
+            (*env)->ReleaseStringUTFChars(env, path, path_utf);
+            if (fd == -1) {
+                /* Throw an exception */
+                LOGE("Cannot open port");
+                /* TODO: throw an exception */
+                return NULL;
+            }
         }
 
-        switch (stopBits) {
-            case 1:
-                cfg.c_cflag &= ~CSTOPB;    //1 Stop Bit
-                break;
-            case 2:
-                cfg.c_cflag |= CSTOPB;    //2 Stop Bits
-                break;
-            default:
-                cfg.c_cflag &= ~CSTOPB;
-                break;
+        /* Configure device */
+        {
+            struct termios2 cfg;
+
+            ioctl (fd, TCGETS2, &cfg);
+            // Set baudrate
+            cfg.c_cflag &= ~CBAUD;
+            cfg.c_cflag |= BOTHER;
+
+            cfg.c_ispeed = baudrate;
+            cfg.c_ospeed = baudrate;
+
+            cfg.c_cflag &= ~CSIZE;
+            switch (dataBits) {
+                case 5:
+                    cfg.c_cflag |= CS5;    //5 Data Bits
+                    break;
+                case 6:
+                    cfg.c_cflag |= CS6;    //6 Data Bits
+                    break;
+                case 7:
+                    cfg.c_cflag |= CS7;    //7 Data Bits
+                    break;
+                case 8:
+                    cfg.c_cflag |= CS8;    //8 Data Bits
+                    break;
+                default:
+                    cfg.c_cflag |= CS8;
+                    break;
+            }
+
+            switch (parity) {
+                case 0:
+                    cfg.c_cflag &= ~PARENB;    //PARITY OFF
+                    break;
+                case 1:
+                    cfg.c_cflag |= (PARODD | PARENB);   //PARITY ODD
+                    cfg.c_iflag &= ~IGNPAR;
+                    cfg.c_iflag |= PARMRK;
+                    cfg.c_iflag |= INPCK;
+                    break;
+                case 2:
+                    cfg.c_iflag &= ~(IGNPAR | PARMRK); //PARITY EVEN
+                    cfg.c_iflag |= INPCK;
+                    cfg.c_cflag |= PARENB;
+                    cfg.c_cflag &= ~PARODD;
+                    break;
+                case 3:
+                    //  PARITY SPACE
+                    cfg.c_iflag &= ~IGNPAR;             //  Make sure wrong parity is not ignored
+                    cfg.c_iflag |= PARMRK;              //  Marks parity error, parity error
+                    //  is given as three char sequence
+                    cfg.c_iflag |= INPCK;               //  Enable input parity checking
+                    cfg.c_cflag |= PARENB | CMSPAR;     //  Enable parity and set space parity
+                    cfg.c_cflag &= ~PARODD;             //
+                    break;
+                case 4:
+                    //  PARITY MARK
+                    cfg.c_iflag &= ~IGNPAR;             //  Make sure wrong parity is not ignored
+                    cfg.c_iflag |= PARMRK;              //  Marks parity error, parity error
+                    //  is given as three char sequence
+                    cfg.c_iflag |= INPCK;               //  Enable input parity checking
+                    cfg.c_cflag |= PARENB | CMSPAR | PARODD;
+                    break;
+                default:
+                    cfg.c_cflag &= ~PARENB;
+                    break;
+            }
+
+            switch (stopBits) {
+                case 1:
+                    cfg.c_cflag &= ~CSTOPB;    //1 Stop Bit
+                    break;
+                case 2:
+                    cfg.c_cflag |= CSTOPB;    //2 Stop Bits
+                    break;
+                default:
+                    cfg.c_cflag &= ~CSTOPB;
+                    break;
+            }
+
+            // hardware flow control
+            switch (flowCon) {
+                case 0:
+                    cfg.c_cflag &= ~CRTSCTS;    //No Flow Control
+                    break;
+                case 1:
+                    cfg.c_cflag |= CRTSCTS;    //Hardware Flow Control
+                    break;
+                case 2:
+                    cfg.c_cflag |= IXON | IXOFF | IXANY;    //Software Flow Control
+                    break;
+                default:
+                    cfg.c_cflag &= ~CRTSCTS;
+                    break;
+            }
+
+
+            if (ioctl(fd, TCSETS2, &cfg)) {
+                LOGE("tcsets2() failed");
+                close(fd);
+                /* TODO: throw an exception */
+                return NULL;
+            }
         }
 
-        // hardware flow control
-        switch (flowCon) {
-            case 0:
-                cfg.c_cflag &= ~CRTSCTS;    //No Flow Control
-                break;
-            case 1:
-                cfg.c_cflag |= CRTSCTS;    //Hardware Flow Control
-                break;
-            case 2:
-                cfg.c_cflag |= IXON | IXOFF | IXANY;    //Software Flow Control
-                break;
-            default:
-                cfg.c_cflag &= ~CRTSCTS;
-                break;
+        /* Create a corresponding file descriptor */
+        {
+            jclass cFileDescriptor = (*env)->FindClass(env, "java/io/FileDescriptor");
+            jmethodID iFileDescriptor = (*env)->GetMethodID(env, cFileDescriptor, "<init>", "()V");
+            jfieldID descriptorID = (*env)->GetFieldID(env, cFileDescriptor, "descriptor", "I");
+            mFileDescriptor = (*env)->NewObject(env, cFileDescriptor, iFileDescriptor);
+            (*env)->SetIntField(env, mFileDescriptor, descriptorID, (jint) fd);
         }
 
-        if (tcsetattr(fd, TCSANOW, &cfg) != 0) {
-            LOGE("Error setting serial port attributes");
-            return NULL;
-        }
-
-        //   if (ioctl(fd, TCSETS2, &cfg)) {
-        //       LOGE("tcsets2() failed");
-        //       close(fd);
-        //       /* TODO: throw an exception */
-        //       return NULL;
-        //  }
-    }
-
-    /* Create a corresponding file descriptor */
-    {
-        jclass cFileDescriptor = (*env)->FindClass(env, "java/io/FileDescriptor");
-        jmethodID iFileDescriptor = (*env)->GetMethodID(env, cFileDescriptor, "<init>", "()V");
-        jfieldID descriptorID = (*env)->GetFieldID(env, cFileDescriptor, "descriptor", "I");
-        mFileDescriptor = (*env)->NewObject(env, cFileDescriptor, iFileDescriptor);
-        (*env)->SetIntField(env, mFileDescriptor, descriptorID, (jint) fd);
-    }
-
-    return mFileDescriptor;
+        return mFileDescriptor;
 }
 
 JNIEXPORT jint JNICALL Java_com_flownex_libecono_SerialPort_serial_1read
