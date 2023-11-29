@@ -43,29 +43,29 @@ public abstract class SerialHelper {
 
     }
 
-    public void open()
-            throws SecurityException, IOException, InvalidParameterException {
-        this.mSerialPort = new SerialPort(this.sPort, this.iBaudRate, this.stopBits, this.dataBits, this.parity, this.flowCon, this.flags);
-        this.mOutputStream = this.mSerialPort.getOutputStream();
-        this.mInputStream = this.mSerialPort.getInputStream();
-        this.mReadThread = new ReadThread();
-        this.mReadThread.start();
-        this.mSendThread = new SendThread();
-        this.mSendThread.setSuspendFlag();
-        this.mSendThread.start();
-        this._isOpen = true;
-    }
+//    public void open()
+//            throws SecurityException, IOException, InvalidParameterException {
+//        this.mSerialPort = new SerialPort(this.sPort, this.iBaudRate, this.stopBits, this.dataBits, this.parity, this.flowCon, this.flags);
+//        this.mOutputStream = this.mSerialPort.getOutputStream();
+//        this.mInputStream = this.mSerialPort.getInputStream();
+//        this.mReadThread = new ReadThread();
+//        this.mReadThread.start();
+//        this.mSendThread = new SendThread();
+//        this.mSendThread.setSuspendFlag();
+//        this.mSendThread.start();
+//        this._isOpen = true;
+//    }
 
-    public void close() {
-        if (this.mReadThread != null) {
-            this.mReadThread.interrupt();
-        }
-        if (this.mSerialPort != null) {
-            this.mSerialPort.close();
-            this.mSerialPort = null;
-        }
-        this._isOpen = false;
-    }
+//    public void close() {
+//        if (this.mReadThread != null) {
+//            this.mReadThread.interrupt();
+//        }
+//        if (this.mSerialPort != null) {
+//            this.mSerialPort.close();
+//            this.mSerialPort = null;
+//        }
+//        this._isOpen = false;
+//    }
 
     public void send(byte[] bOutArray) {
         try {
