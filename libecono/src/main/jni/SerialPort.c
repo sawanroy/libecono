@@ -119,12 +119,15 @@ JNIEXPORT jobject JNICALL Java_com_flownex_libecono_SerialPort_open
             struct termios2 cfg;
 
             ioctl (fd, TCGETS2, &cfg);
-            // Set baudrate
+            // Set baud rate
             cfg.c_cflag &= ~CBAUD;
-            cfg.c_cflag |= BOTHER;
+            cfg.c_cflag |= BOTHER ;
+            cfg.c_cflag = CLOCAL | speed | CREAD;
+            cfg.c_oflag = 0;
+            cfg.c_lflag = 0;
 
-            cfg.c_ispeed = speed;
-            cfg.c_ospeed = speed;
+//            cfg.c_ispeed = baudrate;
+//            cfg.c_ospeed = baudrate;
 
             cfg.c_cflag &= ~CSIZE;
             switch (dataBits) {
@@ -210,8 +213,8 @@ JNIEXPORT jobject JNICALL Java_com_flownex_libecono_SerialPort_open
                     cfg.c_cflag &= ~CRTSCTS;
                     break;
             }
-
-
+           tcflush(fd, TCIFLUSH);
+        LOGD("setting port");
             if (ioctl(fd, TCSETS2, &cfg)) {
                 LOGE("tcsets2() failed");
                 close(fd);
@@ -359,6 +362,7 @@ JNIEXPORT jint JNICALL Java_com_flownex_libecono_SerialPort_serial_1write
             return ERROR;
     }else{
         LOGD(" inside write else %d", n);
+        LOGD("buffer written %s",buffer);
         (*env)->SetByteArrayRegion(env, write_buffer, 0,size , buffer);
         return n;
     }

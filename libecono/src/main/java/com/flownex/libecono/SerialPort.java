@@ -28,6 +28,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
 
 public class SerialPort {
 
@@ -213,14 +214,18 @@ public class SerialPort {
         int ret = 0;
         long WAIT;
         int byteswritten = serial_write(fd, can_buf, size);
-        WAIT = (1 / RS485_Baud_Rate) * 8 * size * 1000000 + 5000;
+        WAIT = (long) (1 / RS485_Baud_Rate) * 8 * size * 1000000 + 5000;
         try {
             Thread.sleep(WAIT);
         } catch (InterruptedException ex) {
             ex.printStackTrace();
         }
+        //Log.e(TAG, "byte written "+ can_buf);
+        Log.e(TAG, "bytes written " + Arrays.toString(can_buf));
+
         return byteswritten;
     }
+
     // Getters and setters
     public InputStream getInputStream() {
         return mFileInputStream;
